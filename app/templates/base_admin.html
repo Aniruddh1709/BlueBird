@@ -1,0 +1,11 @@
+{% extends 'admin/base.html' %}
+
+
+{% block menu_links %}
+<ul class="nav navbar-nav navbar-right">
+{{ layout.menu_links() }}
+    <li>
+        <a href="{{ url_for('google-logout') }}">Logout</a>
+    </li>
+</ul>
+{% endblock %}

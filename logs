@@ -1,0 +1,14 @@
+08-24 20:23:51 MainProcess [werkzeug] WARNING   * Debugger is active!
+08-24 20:23:51 MainProcess [werkzeug] INFO      * Debugger PIN: 296-691-744
+08-24 20:23:51 MainProcess [werkzeug] INFO      * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+08-24 20:24:05 MainProcess [werkzeug] INFO      * Detected change in 'C:\\Users\\Aniruddh\\Desktop\\BlueBird\\app1\\webapp\\task_executor\\resources\\execute_task.py', reloading
+08-24 20:24:05 MainProcess [werkzeug] INFO      * Detected change in 'C:\\Users\\Aniruddh\\Desktop\\BlueBird\\app1\\webapp\\task_executor\\resources\\execute_task.py', reloading
+08-24 20:24:05 MainProcess [werkzeug] INFO      * Detected change in 'C:\\Users\\Aniruddh\\Desktop\\BlueBird\\app1\\webapp\\task_executor\\resources\\execute_task.py', reloading
+08-24 20:24:07 MainProcess [werkzeug] WARNING   * Debugger is active!
+08-24 20:24:07 MainProcess [werkzeug] INFO      * Debugger PIN: 296-691-744
+08-24 20:24:07 MainProcess [werkzeug] INFO      * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+08-24 20:25:03 MainProcess [werkzeug] INFO      * Restarting with windowsapi reloader
+08-24 20:25:05 MainProcess [werkzeug] WARNING   * Debugger is active!
+08-24 20:25:05 MainProcess [werkzeug] INFO      * Debugger PIN: 296-691-744
+08-24 20:25:05 MainProcess [werkzeug] INFO      * Running on http://127.0.0.1:5000/ (Press CTRL+C to quit)
+08-24 20:25:36 MainProcess [werkzeug] INFO     127.0.0.1 - - [24/Aug/2020 20:25:36] "[35m[1mPATCH /execview HTTP/1.1[0m" 500 -

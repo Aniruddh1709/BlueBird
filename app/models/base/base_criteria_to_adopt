@@ -1,0 +1,273 @@
+from enum import Enum
+from json import dumps, loads
+
+
+class Operator(Enum):
+    Equal = '='
+    NotEqual = '!='
+    Greater = '>'
+    Lesser = '<'
+    GreaterOrEqual = '>='
+    LesserOrEqual = '=<'
+    LesserOrEqualPost = '<='
+
+
+class Expression:
+    def __init__(self, _type):
+        self._type = _type
+        self.context = None
+
+    def value(self, **kwargs):
+        raise NotImplementedError('value is not implemented')
+
+    def to_dict(self):
+        return {'_type': self._type}
+
+    def to_json(self):
+        # return dumps(self.to_dict(), sort_keys=True, indent=4)
+        return dumps(self.to_dict())
+
+    """
+    Recursively find the node_id which are used in this expression.
+    If this expression is defined on a node, 
+    effectively this give all the nodes(id) which that node depends on
+    As expression can take any node_id, take care of the self-edge
+    Implement, appropriate in sub class, if needed
+    """
+
+    def depends_on(self):
+        return []
+
+    @classmethod
+    def from_json(cls, json):
+        def get_right_expression(obj):
+            if '_type' not in obj:
+                raise ValueError(
+                    'can not decode expression json without type information'
+                )
+
+            _type = obj['_type']
+            if _type == 'and':
+                return AndExpression(obj['left'], obj['right'])
+            if _type == 'or':
+                return OrExpression(obj['left'], obj['right'])
+            if _type == 'num':
+                return NumExpression(obj['value'])
+            if _type == 'comparison':
+                return ComparisonExpression(
+                    obj['left'], obj['right'], Operator(obj['operator'])
+                )
+            if _type == 'node':
+                return NodeExpression(obj['node_id'], obj['attribute'])
+            if _type == 'const':
+                return ConstantExpression(obj['value'])
+            if _type == 'variable':
+                return VariableExpression(obj['variable'])
+            if _type == 'tag_name':
+                return TagNameExpression(obj['node_id'], obj['tag_name'])
+
+        return loads(json, object_hook=get_right_expression)
+
+    @classmethod
+    def from_dict(cls, expression_dict):
+        return cls.from_json(dumps(expression_dict))
+
+
+class NumExpression(Expression):
+    def __init__(self, number):
+        super().__init__('num')
+        self.number = number
+
+    def value(self, **kwargs):
+        return self.number
+
+    def to_dict(self):
+        return dict(super().to_dict(), **{'value': self.number})
+
+
+class ComparisonExpression(Expression):
+    def __init__(self, left, right, operator):
+        super().__init__('comparison')
+        self.left = left
+        self.right = right
+        self.operator = operator
+
+    def value(self, **kwargs):
+        lvalue, rvalue = (self.left.value(**kwargs), self.right.value(**kwargs))
+        if lvalue is None or rvalue is None:
+            return None
+        lvalue = float(lvalue)
+        rvalue = float(rvalue)
+        if self.operator == Operator.Equal:
+            return lvalue == rvalue
+        if self.operator == Operator.NotEqual:
+            return lvalue != rvalue
+        if self.operator == Operator.Greater:
+            # temporary fix
+            return lvalue >= rvalue
+            # return lvalue > rvalue
+        if self.operator == Operator.Lesser:
+            return lvalue < rvalue
+        if self.operator == Operator.GreaterOrEqual:
+            return lvalue >= rvalue
+        if self.operator in [Operator.LesserOrEqual, Operator.LesserOrEqualPost]:
+            return lvalue <= rvalue
+
+    def to_dict(self):
+        return dict(
+            super().to_dict(),
+            **{
+                'left': self.left.to_dict(),
+                'right': self.right.to_dict(),
+                'operator': self.operator.value,
+            },
+        )
+
+    def depends_on(self):
+        return self.left.depends_on() + self.right.depends_on()
+
+
+class AndExpression(Expression):
+    def __init__(self, left, right):
+        super().__init__('and')
+        self.left = left
+        self.right = right
+
+    def value(self, **kwargs):
+        lvalue, rvalue = (self.left.value(**kwargs), self.right.value(**kwargs))
+        if lvalue is None or rvalue is None:
+            return None
+        return lvalue and rvalue
+
+    def to_dict(self):
+        return dict(
+            super().to_dict(),
+            **{'left': self.left.to_dict(), 'right': self.right.to_dict()},
+        )
+
+    def depends_on(self):
+        return self.left.depends_on() + self.right.depends_on()
+
+
+class OrExpression(Expression):
+    def __init__(self, left, right):
+        super().__init__('or')
+        self.left = left
+        self.right = right
+
+    def value(self, **kwargs):
+        lvalue, rvalue = (self.left.value(**kwargs), self.right.value(**kwargs))
+        if lvalue is None or rvalue is None:
+            return None
+        return lvalue or rvalue
+
+    def to_dict(self):
+        return dict(
+            super().to_dict(),
+            **{'left': self.left.to_dict(), 'right': self.right.to_dict()},
+        )
+
+    def depends_on(self):
+        return self.left.depends_on() + self.right.depends_on()
+
+
+class NodeExpression(Expression):
+    def __init__(self, node_id, attribute):
+        super().__init__('node')
+        self.node_id = node_id
+        self.attribute = attribute
+
+    def value(self, **kwargs):
+        from app.models import UserNode
+
+        student_id = kwargs.get('student_id')
+        program_id = kwargs.get('program_id')
+        user_node = UserNode.get_for(self.node_id, student_id, program_id)
+        if user_node is None or user_node.evaluation_context is None:
+            return None
+        return user_node.evaluation_context.get(self.attribute)
+
+    def to_dict(self):
+        return dict(
+            super().to_dict(), **{'node_id': self.node_id, 'attribute': self.attribute}
+        )
+
+    def depends_on(self):
+        return [self.node_id]
+
+
+class ConstantExpression(Expression):
+    def __init__(self, constant):
+        super().__init__('const')
+        self.constant = constant
+
+    def value(self, **kwargs):
+        return self.constant
+
+    def to_dict(self):
+        return dict(super().to_dict(), **{'value': self.constant})
+
+
+class VariableExpression(Expression):
+    def __init__(self, variable):
+        super().__init__('variable')
+        self.variable = variable
+
+    def value(self, **kwargs):
+        return 0
+
+    def to_dict(self):
+        return dict(super().to_dict(), **{'variable': self.variable})
+
+
+class TagNameExpression(Expression):
+    def __init__(self, node_id, tag_name):
+        super().__init__('tag_name')
+        self.node_id = node_id
+        self.tag_name = tag_name
+
+    def value(self, **kwargs):
+        from app.models import UserAttemptReport
+
+        attempt_tags = kwargs.get('attempt_tags', {})
+        tag_result = UserAttemptReport.analyze_attempt_data(attempt_tags)['tag_result']
+        score_list = tag_result.get(self.tag_name, [0, 0])
+        return int((score_list[0] / score_list[1]) * 100) if score_list[1] else None
+
+    def to_dict(self):
+        return dict(
+            super().to_dict(), **{'node_id': self.node_id, 'tag_name': self.tag_name}
+        )
+
+    def depends_on(self):
+        return [self.node_id]
+
+
+class ExpressionUtil:
+    @classmethod
+    def get_target_accuracy(cls, criteria):
+        if not criteria:
+            return
+        if type(criteria) != ComparisonExpression:
+            return
+        if (
+            type(criteria.left) == NodeExpression
+            and type(criteria.right) == NumExpression
+            and criteria.operator
+            in [Operator.Greater, Operator.GreaterOrEqual, Operator.Equal]
+        ):
+            return criteria.right.number
+        if (
+            type(criteria.left) == NumExpression
+            and type(criteria.right) == NodeExpression
+            and criteria.operator
+            in [
+                Operator.LesserOrEqualPost,
+                Operator.LesserOrEqual,
+                Operator.Lesser,
+                Operator.Equal,
+            ]
+        ):
+            return criteria.left.number
+
+        return None
