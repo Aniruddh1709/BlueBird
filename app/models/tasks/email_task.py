@@ -78,6 +78,14 @@ class EmailTask(BaseTask):
         current_node=kwargs.get('current_node')
         next_node=current_node.EMAIL_OPENED.get(Task_id=kwargs.get('next_node_id'))
         next_node.execute(**kwargs)
+   
+    @classmethod
+    def createNode(cls,**kwargs):
+        # task=super.createNode(journey_id=kwargs.get('journey_id'))
+        # commented out the initialization code because of a confusion i faced with calling the parent class create and child class create
+
+        rel_data=kwargs.get('rel_data')
+        
 
 
         

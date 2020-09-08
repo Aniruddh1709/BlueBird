@@ -58,8 +58,8 @@ class BaseTask(StructuredNode):
     @classmethod
     def createNode(cls, **kwargs):
         task = cls()
-        task.Task_id = kwargs.get('Task_id')
-        task.journey_id = uuid4()
+        task.Task_id = uuid4()
+        task.journey_id = kwargs.get('journey_id', uuid4())
         task.created_on = datetime.datetime.now()
         task.updated_on = datetime.datetime.now()
         task.unlock_criteria = kwargs.get("unlock_criteria", {
